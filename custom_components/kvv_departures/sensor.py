@@ -42,6 +42,8 @@ class NextDepartureSensor(_Base):
 
     _attr_translation_key = "next_departure"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    # The full list is large and only useful live (card/templates): keep it out of the recorder
+    _unrecorded_attributes = frozenset({"departures"})
 
     def __init__(self, coordinator, entry_id) -> None:
         super().__init__(coordinator, entry_id, "next")
@@ -55,6 +57,7 @@ class NextDepartureSensor(_Base):
     def extra_state_attributes(self):
         dep = self._first()
         attrs = {"stop": self.coordinator.stop.name,
+                 "source": self.coordinator.source,
                  "departures": [d.as_dict() for d in self.coordinator.data or []]}
         if dep:
             attrs |= {"line": dep.line, "direction": dep.direction,
@@ -83,6 +86,7 @@ class DepartureSensor(_Base):
 
     _attr_translation_key = "departure"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _unrecorded_attributes = frozenset({"infos"})
 
     def __init__(self, coordinator, entry_id, index: int) -> None:
         super().__init__(coordinator, entry_id, f"departure_{index + 1}")

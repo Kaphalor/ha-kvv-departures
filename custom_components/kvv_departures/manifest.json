@@ -6,6 +6,7 @@
   "documentation": "https://github.com/Kaphalor/ha-kvv-departures",
   "issue_tracker": "https://github.com/Kaphalor/ha-kvv-departures/issues",
   "iot_class": "cloud_polling",
+  "dependencies": ["http", "frontend"],
   "requirements": [],
-  "version": "2.0.0"
+  "version": "2.1.0"
 }

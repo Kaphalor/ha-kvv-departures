@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
@@ -47,6 +49,27 @@ class Stop:
     name: str
 
 
+# Official line colors from the KVV GTFS feed (CC0), see scripts/generate_line_colors.py.
+# Loaded at import time: Home Assistant imports integrations in an executor,
+# so this does not block the event loop.
+_COLORS: dict[str, Any] = json.loads(
+    Path(__file__).with_name("line_colors.json").read_text(encoding="utf-8"))
+# internal mode -> GTFS route_type, only used to resolve ambiguous names (e.g. "E")
+_GTFS_TYPE = {"tram": "0", "ubahn": "0", "sbahn": "2", "zug": "2", "bus": "3"}
+_FALLBACK_COLOR = {"tram": "e30613", "sbahn": "00975f", "ubahn": "0a6fb7",
+                   "zug": "1f3a93", "bus": "91268f"}
+
+
+def line_color(line: str, mode: str) -> tuple[str, str]:
+    """Return (background, text) as '#rrggbb' for a line, using the official colors."""
+    entry = _COLORS.get(line.strip().upper())
+    if isinstance(entry, dict):
+        entry = entry.get(_GTFS_TYPE.get(mode, ""), next(iter(entry.values())))
+    if entry:
+        return f"#{entry[0]}", f"#{entry[1]}"
+    return f"#{_FALLBACK_COLOR.get(mode, '5b6573')}", "#ffffff"
+
+
 @dataclass(frozen=True)
 class Departure:
     line: str
@@ -58,13 +81,21 @@ class Departure:
     delay: int | None
     realtime: bool
     cancelled: bool
+    stop: str = ""
+    operator: str = ""
+    infos: tuple[tuple[str, str], ...] = ()  # (title, url)
 
     def as_dict(self) -> dict[str, Any]:
+        color, text_color = line_color(self.line, self.mode)
         return {
             "line": self.line,
             "direction": self.direction,
             "mode": self.mode,
             "platform": self.platform,
+            "stop": self.stop,
+            "operator": self.operator,
+            "color": color,
+            "text_color": text_color,
             "planned": self.planned.isoformat(),
             "actual": self.actual.isoformat(),
             "time": self.actual.strftime("%H:%M"),
@@ -72,6 +103,7 @@ class Departure:
             "delay": self.delay,
             "realtime": self.realtime,
             "cancelled": self.cancelled,
+            "infos": [{"title": t, "url": u} for t, u in self.infos],
         }
 
 
@@ -120,7 +152,23 @@ def parse_efa_departure(raw: dict) -> Departure | None:
         delay=delay,
         realtime=has_rt,
         cancelled="CANCEL" in str(raw.get("realtimeTripStatus", "")).upper(),
+        stop=raw.get("nameWO") or raw.get("stopName") or "",
+        operator=(raw.get("operator") or {}).get("name", ""),
+        infos=_efa_infos(raw.get("lineInfos")),
     )
+
+
+def _efa_infos(line_infos: Any) -> tuple[tuple[str, str], ...]:
+    """Disruption/construction notices attached to a departure (max. 3)."""
+    if not isinstance(line_infos, dict):
+        return ()
+    out = []
+    for info in _as_list(line_infos.get("lineInfo")):
+        text = info.get("infoText") or {}
+        title = (text.get("subtitle") or info.get("infoLinkText") or "").strip()
+        if title:
+            out.append((title, info.get("infoLinkURL") or ""))
+    return tuple(out[:3])
 
 
 class EfaClient:
@@ -254,6 +302,7 @@ def parse_trias_departures(xml_text: str) -> list[Departure]:
             delay=int((actual - planned).total_seconds() // 60) if estimated else None,
             realtime=estimated is not None,
             cancelled=cancelled,
+            stop=_text(call, "StopPointName", "Text"),
         ))
     return sorted(result, key=lambda d: d.actual)
 

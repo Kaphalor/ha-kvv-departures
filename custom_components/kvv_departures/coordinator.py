@@ -9,8 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import TZ, Departure, KvvError, Stop, filter_departures, parse_lines
-from .const import (CONF_COUNT, CONF_INTERVAL, CONF_LINES, CONF_WALK,
-                    DEFAULT_COUNT, DEFAULT_INTERVAL, DOMAIN)
+from .const import (CONF_COUNT, CONF_INTERVAL, CONF_LINES, CONF_SOURCE, CONF_WALK,
+                    DEFAULT_COUNT, DEFAULT_INTERVAL, DOMAIN, SOURCE_EFA)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class KvvCoordinator(DataUpdateCoordinator[list[Departure]]):
             update_interval=timedelta(seconds=max(30, int(opts.get(CONF_INTERVAL, DEFAULT_INTERVAL)))),
         )
         self.client = client
+        self.source = opts.get(CONF_SOURCE, SOURCE_EFA)  # exposed to the card (notices are EFA-only)
         self.stop = stop
         self.count = int(opts.get(CONF_COUNT, DEFAULT_COUNT))
         self.lines = parse_lines(opts.get(CONF_LINES))
