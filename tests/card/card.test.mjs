@@ -94,6 +94,28 @@ page = await run("de", true, "x", { entity: "" });
 check("empty entity hint", (await page.evaluate(() => window.__el.shadowRoot.textContent)).includes("Wähle den Sensor"));
 await page.close();
 
+// 6) Visual editor: schema based (HA renders the form), no custom editor element
+page = await run("de", true, "x", {});
+const ed = await page.evaluate(() => {
+  const cls = customElements.get("kvv-departures-card");
+  // fake <home-assistant> like the real frontend, so labels follow the user language
+  const ha = document.createElement("home-assistant"); ha.hass = { language: "de", locale: { language: "de" } }; document.body.appendChild(ha);
+  const form = cls.getConfigForm();
+  return {
+    noElementEditor: typeof cls.getConfigElement === "undefined" && !customElements.get("kvv-departures-card-editor"),
+    names: form.schema.map((s) => s.name),
+    entityRequired: form.schema[0].required === true && form.schema[0].selector.entity.integration === "kvv_departures",
+    labelDe: form.computeLabel({ name: "entity" }),
+    labelUnknown: form.computeLabel({ name: "foo" }),
+  };
+});
+check("editor: no custom element, schema form", ed.noElementEditor && ed.entityRequired);
+check("editor: fields", JSON.stringify(ed.names) === JSON.stringify(["entity", "title", "max_departures", "board", "show_platform"]), ed.names.join());
+check("editor: labels follow language", ed.labelDe.includes("Nächste Abfahrt") && ed.labelUnknown === "foo", ed.labelDe);
+await page.evaluate(() => { document.querySelector("home-assistant").hass = { language: "en", locale: { language: "en" } }; });
+check("editor: english labels", (await page.evaluate(() => customElements.get("kvv-departures-card").getConfigForm().computeLabel({ name: "board" }))).includes("board style"));
+await page.close();
+
 check("no page errors", errors.length === 0, errors.join(" | "));
 await browser.close();
 process.exit(failures ? 1 : 0);

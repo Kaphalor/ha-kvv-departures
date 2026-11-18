@@ -3,7 +3,7 @@
  * Departure board with official KVV line colors; click a departure for details.
  * Config: entity (the "Next departure" sensor), title, max_departures, board, show_platform.
  */
-const CARD_VERSION = "2.1.0";
+const CARD_VERSION = "2.1.1";
 
 const I18N = {
   en: {
@@ -144,7 +144,24 @@ class KvvDeparturesCard extends HTMLElement {
     });
   }
 
-  static getConfigElement() { return document.createElement("kvv-departures-card-editor"); }
+  // Schema-based visual editor: Home Assistant builds the form itself, so there is
+  // no custom editor element that could be missing or clash with another card.
+  static getConfigForm() {
+    return {
+      schema: [
+        { name: "entity", required: true, selector: { entity: { domain: "sensor", integration: "kvv_departures", device_class: "timestamp" } } },
+        { name: "title", selector: { text: {} } },
+        { name: "max_departures", selector: { number: { min: 1, max: 20, mode: "box" } } },
+        { name: "board", selector: { boolean: {} } },
+        { name: "show_platform", selector: { boolean: {} } },
+      ],
+      computeLabel: (schema) => {
+        const ha = document.querySelector("home-assistant");
+        const { t } = strings(ha && ha.hass);
+        return { entity: t.ed_entity, title: t.ed_title, max_departures: t.ed_max, board: t.ed_board, show_platform: t.ed_platform }[schema.name] || schema.name;
+      },
+    };
+  }
 
   static getStubConfig(hass) {
     const found = Object.keys((hass && hass.states) || {}).find(
@@ -305,37 +322,7 @@ class KvvDeparturesCard extends HTMLElement {
   }
 }
 
-class KvvDeparturesCardEditor extends HTMLElement {
-  setConfig(config) { this._config = config; this._render(); }
-  set hass(hass) { this._hass = hass; if (this._form) this._form.hass = hass; this._render(); }
-
-  _render() {
-    if (!this._config || !this._hass) return;
-    const { t } = strings(this._hass);
-    if (!this._form) {
-      this._form = document.createElement("ha-form");
-      this._form.addEventListener("value-changed", (e) => {
-        this._config = e.detail.value;
-        this.dispatchEvent(new CustomEvent("config-changed", { bubbles: true, composed: true, detail: { config: this._config } }));
-      });
-      this.appendChild(this._form);
-    }
-    const labels = { entity: t.ed_entity, title: t.ed_title, max_departures: t.ed_max, board: t.ed_board, show_platform: t.ed_platform };
-    this._form.hass = this._hass;
-    this._form.data = this._config;
-    this._form.schema = [
-      { name: "entity", required: true, selector: { entity: { domain: "sensor", integration: "kvv_departures", device_class: "timestamp" } } },
-      { name: "title", selector: { text: {} } },
-      { name: "max_departures", selector: { number: { min: 1, max: 20, mode: "box" } } },
-      { name: "board", selector: { boolean: {} } },
-      { name: "show_platform", selector: { boolean: {} } },
-    ];
-    this._form.computeLabel = (s) => labels[s.name] || s.name;
-  }
-}
-
 if (!customElements.get("kvv-departures-card")) customElements.define("kvv-departures-card", KvvDeparturesCard);
-if (!customElements.get("kvv-departures-card-editor")) customElements.define("kvv-departures-card-editor", KvvDeparturesCardEditor);
 window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "kvv-departures-card")) {
   window.customCards.push({
