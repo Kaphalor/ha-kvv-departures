@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="custom_components/kvv_departures/brand/icon@2x.png" width="128" alt="KVV Departures icon">
+</p>
+
 # KVV Departures for Home Assistant
 
 A native Home Assistant integration (HACS compatible) that shows live departures,
@@ -106,4 +110,5 @@ language, copy `en.json` to `<language code>.json` and translate the values;
 
 ## Disclaimer
 
-This is an unofficial project and is not affiliated with the KVV.
+This is an unofficial project and is not affiliated with the KVV. The KVV name
+and logo shown in the icon belong to their respective owners.
