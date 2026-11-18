@@ -34,9 +34,9 @@ time in minutes, update interval and data source.
 
 | Entity | Content |
 |---|---|
-| Next departure | Timestamp of the next departure (actual time). The attribute `departures` holds the complete list. |
+| Next departure | Timestamp of the next departure (actual time). The attribute `departures` holds the complete list; this is the entity the departure board card uses. |
 | Delay of next departure | Delay in minutes. |
-| Departure 1 … N | One entity per departure. Attributes: `line`, `direction`, `platform`, `delay`, `planned_time`, `time`, `cancelled`, `text`. |
+| Departure 1 … N | One entity per departure. Attributes: `line`, `direction`, `platform`, `stop`, `operator`, `color`, `text_color`, `delay`, `planned_time`, `time`, `cancelled`, `infos`, `text`. |
 
 Entity IDs are generated from the entity names in Home Assistant's system
 language when the entity is first created, for example
@@ -44,7 +44,32 @@ language when the entity is first created, for example
 `sensor.durlacher_tor_nachste_abfahrt` (German). Check the exact IDs under
 *Devices & services → KVV Departures*.
 
-## Dashboard
+## Departure board card
+
+The integration ships a Lovelace card that looks like a station departure board.
+It is registered automatically, so no dashboard resource has to be added.
+
+- Line badges use the **official KVV line colors** (taken from the KVV GTFS feed, CC0).
+- Shows the actual time, the struck-through scheduled time, the delay (amber/red) and a live countdown.
+- Cancelled departures are struck through.
+- **Click a departure** for details: status, platform, stop, transport type, operator and
+  KVV notices (e.g. construction work) with links. "Show entity" opens the sensor's more-info dialog.
+- Follows the user's display language (German and English) and has a visual editor.
+
+Add it via *Edit dashboard → Add card → KVV Departures*, or in YAML:
+
+```yaml
+type: custom:kvv-departures-card
+entity: sensor.durlacher_tor_next_departure
+title: Durlacher Tor        # optional, defaults to the stop name
+max_departures: 6           # optional
+board: true                 # dark board style; false follows your theme
+show_platform: true
+```
+
+If the card does not show up after an update, reload the browser page (Ctrl+F5).
+
+### Other cards
 
 **Markdown card** with delays:
 
@@ -94,14 +119,27 @@ namespaces, stop IDs) once you have real credentials.
 ## Status
 
 The API layer is covered by automated tests, including live requests to KVV. The
-Home Assistant parts (config flow, sensors, translations) have been syntax-checked
-but not yet run in a real Home Assistant instance.
+departure board card is tested in headless Chrome against a mocked `hass` object
+(rendering, line colors, dialog, languages). The Home Assistant parts (config flow,
+sensors, card registration) have been syntax-checked but not yet run in a real
+Home Assistant instance.
 
 ## Development
 
 ```
 python -m venv venv && venv/bin/pip install aiohttp pytest pytest-asyncio
 venv/bin/pytest tests
+
+# card test (needs Chrome/Chromium)
+npm i --no-save playwright-core
+CHROME=/path/to/chrome node tests/card/card.test.mjs
+```
+
+Line colors come from the official KVV GTFS feed. To refresh them:
+
+```
+curl -o google_transit.zip https://projekte.kvv-efa.de/GTFS/google_transit.zip
+python3 scripts/generate_line_colors.py google_transit.zip
 ```
 
 Translations live in `custom_components/kvv_departures/translations/`. To add a
