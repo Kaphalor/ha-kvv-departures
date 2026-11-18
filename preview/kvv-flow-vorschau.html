@@ -1,0 +1,305 @@
+<title>KVV Flow Vorschau</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<style>
+  /* Layout: links Schrittleiste, rechts ein nachgebautes Home-Assistant-Fenster */
+  :root {
+    --bg: #eceff3; --panel: #ffffff; --fg: #212529; --muted: #5f6b7a; --line: #d6dbe2;
+    --primary: #0284c7; --primary-fg: #ffffff; --card: #ffffff; --side: #1c2733; --side-fg: #cbd5e1;
+    --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --chip: #e6eaf0; --hl: #e0f2fe;
+    --tram: #d71920; --sbahn: #2e8b3d; --bus: #7b3f98; --ubahn: #0a6fb7;
+    --font: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11161c; --panel: #1b222b; --fg: #e6e9ed; --muted: #94a0ae; --line: #2f3a47;
+      --primary: #38bdf8; --primary-fg: #06222f; --card: #222b36; --side: #0e1318; --side-fg: #aab6c4;
+      --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #2b3541; --hl: #123248; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11161c; --panel: #1b222b; --fg: #e6e9ed; --muted: #94a0ae; --line: #2f3a47;
+    --primary: #38bdf8; --primary-fg: #06222f; --card: #222b36; --side: #0e1318; --side-fg: #aab6c4;
+    --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #2b3541; --hl: #123248; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.4;
+         padding-block: 20px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+         padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+  h1 { font-size: 1.25rem; margin: 0 0 4px; font-weight: 700; }
+  .lead { color: var(--muted); margin: 0 0 14px; font-size: .85rem; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  @media (max-width: 860px) { .steps { grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); overflow-x: auto; padding-bottom: 6px; } }
+  .steps button { width: 100%; text-align: left; font: inherit; color: var(--fg); background: var(--panel);
+                  border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; display: grid; gap: 1px; }
+  .steps button small { color: var(--muted); font-size: .75rem; }
+  .steps button[aria-current="step"] { border-color: var(--primary); background: var(--hl); }
+  .steps button:focus-visible, .btn:focus-visible, .row:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .nav { display: flex; gap: 8px; margin-top: 12px; }
+  .nav button { flex: 1; font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+  .nav button:disabled { opacity: .4; cursor: default; }
+  .note { margin-top: 14px; font-size: .75rem; color: var(--muted); }
+
+  /* ---- HA-Fenster ---- */
+  .ha { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+        display: grid; grid-template-columns: 56px minmax(0, 1fr); min-height: 560px; }
+  .side { background: var(--side); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; }
+  .side i { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--side-fg); font-style: normal; font-size: 17px; }
+  .side i.on { background: rgba(56,189,248,.18); color: #7dd3fc; }
+  .main { min-width: 0; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+  .top { background: var(--primary); color: var(--primary-fg); padding: 13px 18px; font-size: 1.1rem; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .content { padding: 16px; flex: 1; min-width: 0; }
+  .crumb { color: var(--muted); font-size: .8rem; margin-bottom: 10px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .card h2 { font-size: 1rem; margin: 0 0 8px; font-weight: 500; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .integ { display: flex; gap: 10px; align-items: center; }
+  .logo { width: 36px; height: 36px; border-radius: 9px; background: var(--chip); display: grid; place-items: center; font-size: 18px; flex: none; }
+  .logo.kvv { background: var(--tram); color: #fff; font-weight: 700; font-size: 12px; }
+  .sub { color: var(--muted); font-size: .8rem; }
+
+  .fab { position: absolute; right: 18px; bottom: 18px; }
+  .btn { font: inherit; font-weight: 500; border: 0; border-radius: 22px; padding: 10px 18px; cursor: pointer; background: var(--primary); color: var(--primary-fg); }
+  .btn.ghost { background: transparent; color: var(--primary); }
+  .btn.pulse { box-shadow: 0 0 0 0 rgba(2,132,199,.5); animation: pulse 1.8s infinite; }
+  @media (prefers-reduced-motion: reduce) { .btn.pulse { animation: none; } }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 10px rgba(2,132,199,0); } 100% { box-shadow: 0 0 0 0 rgba(2,132,199,0); } }
+
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .dialog { background: var(--panel); border-radius: 14px; width: min(440px, 100%); padding: 18px 20px; box-shadow: 0 12px 40px rgba(0,0,0,.35); max-height: 100%; overflow: auto; }
+  .dialog h3 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 500; }
+  .field { width: 100%; font: inherit; color: var(--fg); background: transparent; border: 0; border-bottom: 2px solid var(--line);
+           padding: 10px 2px; margin: 10px 0 6px; }
+  .field:focus { outline: none; border-color: var(--primary); }
+  .list { display: grid; gap: 2px; margin: 8px 0; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px; cursor: pointer; background: transparent; border: 0; font: inherit; color: var(--fg); text-align: left; width: 100%; }
+  .row:hover, .row[aria-checked="true"] { background: var(--hl); }
+  .radio { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted); flex: none; }
+  .row[aria-checked="true"] .radio { border-color: var(--primary); background: radial-gradient(var(--primary) 45%, transparent 50%); }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .err { color: var(--bad); font-size: .8rem; min-height: 1em; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .toggle:first-of-type { border-top: 0; }
+  .val { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .pill { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: .78rem; }
+
+  /* Entitätenliste */
+  table.ent { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .ent th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .ent td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ent code { font-size: .78rem; color: var(--muted); word-break: break-all; }
+  .scroll { overflow-x: auto; }
+
+  /* Dashboard-Karten */
+  .dash { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: start; }
+  .badge { display: inline-block; min-width: 2.5rem; text-align: center; color: #fff; font-weight: 700; border-radius: 6px; padding: 1px 6px; background: #555; font-size: .85rem; }
+  .badge.tram { background: var(--tram); } .badge.sbahn { background: var(--sbahn); } .badge.bus { background: var(--bus); } .badge.ubahn { background: var(--ubahn); }
+  .md { display: grid; gap: 0; }
+  .md .dep { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line); }
+  .md .dep:first-child { border-top: 0; }
+  .md .t { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .late { color: var(--warn); font-weight: 500; font-size: .85rem; } .late.hi { color: var(--bad); } .ontime { color: var(--ok); font-size: .85rem; }
+  .cx { text-decoration: line-through; opacity: .6; }
+  .erow { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
+  .erow:first-of-type { border-top: 0; }
+  .erow .n { min-width: 0; } .erow .n b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sw { width: 38px; height: 22px; border-radius: 12px; background: var(--primary); position: relative; flex: none; }
+  .sw::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; }
+  .temp { font-size: 2rem; font-weight: 300; }
+  .tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <aside>
+    <h1>KVV Abfahrten in Home Assistant</h1>
+    <p class="lead">Klickbare Vorschau des Einrichtungs-Flows bis zum Dashboard. Du kannst im Fenster rechts direkt klicken.</p>
+    <ol class="steps" id="steps"></ol>
+    <div class="nav"><button id="prev">Zurück</button><button id="next">Weiter</button></div>
+    <p class="note">Nachgebaute Oberfläche mit Beispieldaten. Haltestellennamen stammen aus echten KVV-Abfragen, Abfahrtszeiten sind fiktiv und laufen relativ zur aktuellen Uhrzeit.</p>
+  </aside>
+  <main>
+    <div class="ha" id="ha" aria-live="polite"></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const STOPS = [
+    { id: "7000801", name: "Durlach, Karlsruhe-Durlach" },
+    { id: "7000802", name: "Durlach, Bahnhof" },
+    { id: "7004492", name: "Durlach, Zündhütle" },
+    { id: "7000003", name: "Karlsruhe, Durlacher Tor/KIT-Campus Süd" },
+    { id: "7001003", name: "Karlsruhe, Marktplatz (Kaiserstraße U)" },
+    { id: "7001000", name: "Karlsruhe, Hauptbahnhof" },
+    { id: "7001001", name: "Karlsruhe, Europaplatz" },
+  ];
+  const STEPS = [
+    ["Geräte & Dienste", "Integration hinzufügen starten"],
+    ["Integration wählen", "„KVV“ suchen"],
+    ["Haltestelle suchen", "Name eingeben"],
+    ["Haltestelle auswählen", "Treffer aus dem KVV"],
+    ["Gerät & Entitäten", "Was angelegt wird"],
+    ["Einstellungen", "Filter, Fußweg, Datenquelle"],
+    ["Dashboard", "Karten mit Abfahrten"],
+  ];
+  const S = { step: 0, q: "Durlach", stop: null, search: "" };
+  const $ = (s) => document.querySelector(s);
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const slug = (t) => t.toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const shortName = () => (S.stop || STOPS[0]).name.replace(/^[^,]+,\s*/, "");
+
+  // Fiktive Abfahrten relativ zu "jetzt"
+  const T0 = Date.now();
+  const DEPS = [
+    { line: "S5", dir: "Knielingen Rheinbergstraße", mode: "sbahn", plat: "Gleis 1", off: 2, delay: 0 },
+    { line: "3",  dir: "Rintheim", mode: "tram", plat: "Gleis 4", off: 5, delay: 4 },
+    { line: "1",  dir: "Heide", mode: "tram", plat: "Gleis 2", off: 8, delay: 1 },
+    { line: "S7", dir: "Achern", mode: "sbahn", plat: "Gleis 1", off: 11, delay: 0, cancelled: true },
+    { line: "3",  dir: "Daxlanden Waidweg", mode: "tram", plat: "Gleis 3", off: 14, delay: 7 },
+  ];
+  const hhmm = (d) => d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const when = (off, delay = 0) => new Date(T0 + (off + delay) * 60000);
+  const planned = (d) => hhmm(when(d.off));
+  const actual = (d) => hhmm(when(d.off, d.delay));
+  const delayHtml = (d) => d.cancelled ? `<span class="late hi">fällt aus</span>`
+    : d.delay > 0 ? `<span class="late ${d.delay >= 5 ? "hi" : ""}">+${d.delay} min</span>` : `<span class="ontime">pünktlich</span>`;
+
+  const sidebar = (on) => `<div class="side">${["☰", "▦", "⚙", "🛠", "☰"].map((x, i) => `<i class="${i === on ? "on" : ""}">${x}</i>`).join("")}</div>`;
+  const frame = (title, body, extra = "") => `${sidebar(title.dash ? 0 : 2)}<div class="main"><div class="top">${esc(title.t)}</div><div class="content">${body}</div>${extra}</div>`;
+
+  const devicesPage = (withKvv, extra) => {
+    const cards = [
+      ["☀", "Sun", "1 Dienst · 2 Entitäten"], ["☁", "Meteorologisk institutt (Met.no)", "1 Eintrag · 1 Gerät"],
+      ["⌂", "Home Assistant Cloud", "1 Eintrag"],
+    ].map(([i, n, s]) => `<div class="card integ"><div class="logo">${i}</div><div><b>${n}</b><div class="sub">${s}</div></div></div>`).join("");
+    const kvv = withKvv ? `<div class="card integ"><div class="logo kvv">KVV</div><div><b>KVV Abfahrten</b><div class="sub">1 Dienst · ${1 + 2 + 5} Entitäten</div></div></div>` : "";
+    return frame({ t: "Einstellungen" },
+      `<div class="crumb">Einstellungen › Geräte & Dienste › Integrationen</div><div class="grid">${kvv}${cards}</div>`,
+      `<button class="btn fab ${S.step === 0 ? "pulse" : ""}" data-go="1">+ Integration hinzufügen</button>${extra || ""}`);
+  };
+
+  const R = [
+    // 0
+    () => devicesPage(false),
+    // 1
+    () => devicesPage(false, `<div class="scrim"><div class="dialog">
+        <h3>Integration hinzufügen</h3>
+        <input class="field" id="isearch" placeholder="Marke oder Integration suchen" value="${esc(S.search)}" autocomplete="off">
+        <div class="list">
+          ${[["KVV Abfahrten", "KVV", true], ["Kodi", "▶", false], ["KNX", "⌁", false]]
+            .filter(([n]) => n.toLowerCase().includes(S.search.toLowerCase()) || !S.search)
+            .map(([n, l, k]) => `<button class="row" ${k ? 'data-go="2"' : ""}><span class="logo ${k ? "kvv" : ""}">${l}</span><span><b>${n}</b>${k ? '<div class="sub">Benutzerdefinierte Integration · Cloud-Abfrage</div>' : ""}</span></button>`).join("") || '<div class="sub">Keine Treffer.</div>'}
+        </div>
+        <div class="sub">Tipp: „KVV“ eintippen oder den Eintrag anklicken.</div>
+      </div></div>`),
+    // 2
+    () => devicesPage(false, `<div class="scrim"><form class="dialog" id="qform">
+        <h3>KVV-Haltestelle suchen</h3>
+        <div class="sub">Name der Haltestelle eingeben, z. B. „Marktplatz“.</div>
+        <input class="field" id="query" value="${esc(S.q)}" placeholder="Haltestelle" autocomplete="off">
+        <div class="err" id="qerr"></div>
+        <div class="actions"><button type="button" class="btn ghost" data-go="0">Abbrechen</button><button class="btn" type="submit">Absenden</button></div>
+      </form></div>`),
+    // 3
+    () => {
+      const hits = STOPS.filter((s) => s.name.toLowerCase().includes(S.q.trim().toLowerCase()));
+      S.hits = hits;
+      if (!S.stop || !hits.includes(S.stop)) S.stop = hits[0] || null;
+      return devicesPage(false, `<div class="scrim"><form class="dialog" id="sform">
+        <h3>Haltestelle auswählen</h3>
+        <div class="sub">${hits.length} Treffer für „${esc(S.q)}“</div>
+        <div class="list" role="radiogroup">${hits.map((s) => `<button type="button" class="row" role="radio" aria-checked="${s === S.stop}" data-stop="${s.id}"><span class="radio"></span>${esc(s.name)}</button>`).join("") || '<div class="err">Keine Haltestelle gefunden. Anderen Namen versuchen.</div>'}</div>
+        <div class="actions"><button type="button" class="btn ghost" data-go="2">Zurück</button><button class="btn" type="submit" ${hits.length ? "" : "disabled"}>Absenden</button></div>
+      </form></div>`);
+    },
+    // 4
+    () => {
+      const base = "sensor." + slug(shortName());
+      const ents = [
+        ["Nächste Abfahrt", base + "_nachste_abfahrt", `${actual(DEPS[0])} Uhr`],
+        ["Verspätung nächste Abfahrt", base + "_verspatung_nachste_abfahrt", `${DEPS[0].delay} min`],
+        ...DEPS.map((d, i) => [`Abfahrt ${i + 1}`, `${base}_abfahrt_${i + 1}`, d.cancelled ? "fällt aus" : `${actual(d)} Uhr`]),
+      ];
+      return frame({ t: "Einstellungen" }, `
+        <div class="crumb">Einstellungen › Geräte & Dienste › KVV Abfahrten › ${esc((S.stop || STOPS[0]).name)}</div>
+        <div class="card" style="margin-bottom:12px"><div class="integ"><div class="logo kvv">KVV</div><div><b>Erfolg! Haltestelle eingerichtet</b>
+          <div class="sub">Gerät „${esc((S.stop || STOPS[0]).name)}“ · Hersteller KVV · ${ents.length} Entitäten</div></div></div></div>
+        <div class="card"><h2>Entitäten</h2><div class="scroll"><table class="ent"><thead><tr><th>Name</th><th>Entitäts-ID</th><th>Status</th></tr></thead>
+          <tbody>${ents.map(([n, id, v]) => `<tr><td>${n}</td><td><code>${id}</code></td><td class="val">${v}</td></tr>`).join("")}</tbody></table></div></div>`,
+        `<button class="btn fab" data-go="5">⚙ Konfigurieren</button>`);
+    },
+    // 5
+    () => devicesPage(true, `<div class="scrim"><form class="dialog" id="oform">
+        <h3>Einstellungen · ${esc(shortName())}</h3>
+        <div class="toggle"><span>Anzahl Abfahrten</span><span class="pill">5</span></div>
+        <div class="toggle"><span>Nur diese Linien<div class="sub">leer = alle</div></span><span class="pill">S5, S7, 1, 3</span></div>
+        <div class="toggle"><span>Fußweg (Minuten)<div class="sub">frühere Abfahrten ausblenden</div></span><span class="pill">3</span></div>
+        <div class="toggle"><span>Aktualisierung</span><span class="pill">60 s</span></div>
+        <div class="toggle"><span>Datenquelle<div class="sub">TRIAS braucht Zugang vom KVV</div></span><span class="pill">efa</span></div>
+        <div class="actions"><button type="button" class="btn ghost" data-go="4">Abbrechen</button><button class="btn" type="submit">Absenden</button></div>
+      </form></div>`),
+    // 6
+    () => {
+      const base = "sensor." + slug(shortName());
+      return frame({ t: "Übersicht", dash: true }, `
+        <div class="dash">
+          <div class="card"><div class="tag">Markdown-Karte</div><h2>${esc(shortName())}</h2>
+            <div class="md">${DEPS.map((d) => `<div class="dep"><span class="badge ${d.mode}">${d.line}</span>
+              <span class="${d.cancelled ? "cx" : ""}">${esc(d.dir)}</span>
+              <span><span class="t ${d.cancelled ? "cx" : ""}">${actual(d)}</span> ${d.cancelled ? '<span class="late hi">fällt aus</span>' : d.delay > 0 ? `<span class="late ${d.delay >= 5 ? "hi" : ""}">+${d.delay}</span>` : ""}</span></div>`).join("")}</div></div>
+          <div class="card"><div class="tag">Entities-Karte</div><h2>Nächste Bahnen</h2>
+            ${DEPS.slice(0, 3).map((d, i) => `<div class="erow"><div class="n"><b>Abfahrt ${i + 1}</b><span class="sub">${d.line} → ${esc(d.dir)}</span></div><div style="text-align:right"><b class="val" style="color:var(--fg)">${actual(d)}</b><div>${delayHtml(d)}</div></div></div>`).join("")}
+            <div class="erow"><div class="n"><b>Verspätung nächste</b><span class="sub">${base}_verspatung…</span></div><b class="val" style="color:var(--fg)">${DEPS[0].delay} min</b></div></div>
+          <div class="card"><div class="tag">Wetter</div><div class="temp">7 °C</div><div class="sub">bewölkt · Karlsruhe</div></div>
+          <div class="card"><div class="tag">Licht</div><div class="erow"><div class="n"><b>Wohnzimmer</b></div><span class="sw"></span></div><div class="erow"><div class="n"><b>Flur</b></div><span class="sw" style="background:var(--line)"></span></div></div>
+        </div>`);
+    },
+  ];
+
+  function renderSteps() {
+    $("#steps").innerHTML = STEPS.map(([a, b], i) => `<li><button data-jump="${i}" ${i === S.step ? 'aria-current="step"' : ""}>${i + 1}. ${a}<small>${b}</small></button></li>`).join("");
+    $("#prev").disabled = S.step === 0; $("#next").disabled = S.step === STEPS.length - 1;
+  }
+  function render() {
+    $("#ha").innerHTML = R[S.step]();
+    renderSteps();
+    const f = $("#isearch") || $("#query"); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); }
+  }
+  const go = (n) => { S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); };
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-go],[data-jump],[data-stop]"); if (!t) return;
+    if (t.dataset.jump) { const j = +t.dataset.jump; if (j >= 3 && !S.q) S.q = "Durlach"; return go(j); }
+    if (t.dataset.go) return go(+t.dataset.go);
+    if (t.dataset.stop) { S.stop = STOPS.find((s) => s.id === t.dataset.stop); render(); }
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "isearch") {
+      S.search = e.target.value;
+      const list = $(".dialog .list"), v = S.search.toLowerCase();
+      list.querySelectorAll(".row").forEach((r) => { r.hidden = v && !r.textContent.toLowerCase().includes(v); });
+    }
+    if (e.target.id === "query") S.q = e.target.value;
+  });
+  document.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (e.target.id === "qform") {
+      if (S.q.trim().length < 2) { $("#qerr").textContent = "Bitte mindestens 2 Zeichen eingeben."; return; }
+      go(3);
+    } else if (e.target.id === "sform") go(4);
+    else if (e.target.id === "oform") go(6);
+  });
+  $("#prev").onclick = () => go(S.step - 1);
+  $("#next").onclick = () => go(S.step + 1);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.step > 0 && S.step < 4) go(0); });
+
+  S.stop = STOPS[0];
+  render();
+  setInterval(() => { if (S.step === 4 || S.step === 6) render(); }, 60000);
+})();
+</script>

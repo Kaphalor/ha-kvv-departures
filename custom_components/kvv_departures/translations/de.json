@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "KVV-Haltestelle suchen",
+        "description": "Name der Haltestelle eingeben, z. B. „Marktplatz“.",
+        "data": { "query": "Haltestelle" }
+      },
+      "select": {
+        "title": "Haltestelle auswählen",
+        "data": { "stop": "Haltestelle" }
+      }
+    },
+    "error": {
+      "cannot_connect": "KVV nicht erreichbar.",
+      "no_results": "Keine Haltestelle gefunden."
+    },
+    "abort": { "already_configured": "Diese Haltestelle ist bereits eingerichtet." }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Einstellungen",
+        "description": "TRIAS benötigt Zugangsdaten vom KVV (fahrplan@kvv.karlsruhe.de). Ohne Zugang „efa“ wählen.",
+        "data": {
+          "source": "Datenquelle (efa / trias)",
+          "trias_url": "TRIAS-URL",
+          "trias_requestor_ref": "TRIAS-Requestor-Referenz",
+          "departures": "Anzahl Abfahrten",
+          "lines": "Nur diese Linien (kommagetrennt, leer = alle)",
+          "walk_minutes": "Fußweg in Minuten (frühere Abfahrten ausblenden)",
+          "scan_interval": "Aktualisierung in Sekunden"
+        }
+      }
+    },
+    "error": { "trias_missing": "Für TRIAS werden URL und Requestor-Referenz benötigt." }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": { "name": "Nächste Abfahrt" },
+      "next_delay": { "name": "Verspätung nächste Abfahrt" },
+      "departure": { "name": "Abfahrt {number}" }
+    }
+  }
+}

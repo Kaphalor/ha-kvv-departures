@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": { "title": "Search KVV stop", "data": { "query": "Stop name" } },
+      "select": { "title": "Select stop", "data": { "stop": "Stop" } }
+    },
+    "error": { "cannot_connect": "Cannot reach KVV.", "no_results": "No stop found." },
+    "abort": { "already_configured": "This stop is already configured." }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Settings",
+        "data": {
+          "source": "Data source (efa / trias)",
+          "trias_url": "TRIAS URL",
+          "trias_requestor_ref": "TRIAS requestor reference",
+          "departures": "Number of departures",
+          "lines": "Only these lines (comma separated, empty = all)",
+          "walk_minutes": "Walking time in minutes",
+          "scan_interval": "Update interval in seconds"
+        }
+      }
+    },
+    "error": { "trias_missing": "TRIAS needs URL and requestor reference." }
+  },
+  "entity": {
+    "sensor": {
+      "next_departure": { "name": "Next departure" },
+      "next_delay": { "name": "Delay of next departure" },
+      "departure": { "name": "Departure {number}" }
+    }
+  }
+}

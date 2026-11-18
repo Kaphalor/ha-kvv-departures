@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KVV Abfahrten</title>
+<style>
+  :root {
+    --bg: transparent; --fg: #1c1c1e; --muted: #6b7280; --line: rgba(128,128,128,.25);
+    --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --chip: #e5e7eb;
+    --tram: #d71920; --sbahn: #2e8b3d; --bus: #7b3f98; --zug: #1f3a93; --ubahn: #0a6fb7; --sonstige: #555;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fg: #f2f2f3; --muted: #9ca3af; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #2b2f36;
+    }
+  }
+  :root[data-theme="dark"] { --fg: #f2f2f3; --muted: #9ca3af; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --chip: #2b2f36; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 12px 16px; background: var(--bg); color: var(--fg);
+         font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  h1 { font-size: 1.1rem; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--muted); font-size: .8rem; }
+  button { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--fg);
+           border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li.dep { display: grid; grid-template-columns: 3.2rem 1fr auto; gap: 10px; align-items: center;
+           padding: 9px 0; border-top: 1px solid var(--line); }
+  li.dep:first-child { border-top: 0; }
+  .badge { text-align: center; font-weight: 700; color: #fff; border-radius: 8px; padding: 4px 0;
+           min-width: 3.2rem; background: var(--sonstige); }
+  .badge.tram { background: var(--tram); } .badge.sbahn { background: var(--sbahn); }
+  .badge.bus { background: var(--bus); } .badge.zug { background: var(--zug); }
+  .badge.ubahn { background: var(--ubahn); }
+  .dir { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub { color: var(--muted); font-size: .8rem; }
+  .time { text-align: right; font-variant-numeric: tabular-nums; }
+  .time .big { font-size: 1.25rem; font-weight: 700; }
+  .delay { font-size: .85rem; font-weight: 600; }
+  .delay.ok { color: var(--ok); } .delay.warn { color: var(--warn); } .delay.bad { color: var(--bad); }
+  .planned { text-decoration: line-through; color: var(--muted); font-size: .8rem; margin-right: 4px; }
+  li.cancelled .dir, li.cancelled .big { text-decoration: line-through; opacity: .6; }
+  .cancel-tag { color: var(--bad); font-weight: 700; font-size: .85rem; }
+  #error { color: var(--bad); padding: 8px 0; }
+  #stale { color: var(--warn); font-size: .8rem; }
+  #search { display: none; margin-bottom: 10px; }
+  #search.open { display: block; }
+  #search input { width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px;
+                  border: 1px solid var(--line); background: transparent; color: var(--fg); }
+  #results button { display: block; width: 100%; text-align: left; margin-top: 4px; }
+  .compact header, .compact .meta { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">KVV Abfahrten</h1>
+  <button id="toggle-search" title="Haltestelle ändern" aria-label="Haltestelle ändern">⚙</button>
+</header>
+<div id="search">
+  <input id="q" type="search" placeholder="Haltestelle suchen, z. B. Marktplatz" autocomplete="off">
+  <div id="results"></div>
+</div>
+<div id="error" role="alert"></div>
+<ul id="list" aria-live="polite"></ul>
+<div class="meta"><span id="updated"></span> <span id="stale"></span></div>
+
+<script>
+(() => {
+  const P = new URLSearchParams(location.search);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  const theme = P.get("theme");
+  if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
+  if (P.has("compact")) document.body.classList.add("compact");
+  if (P.has("nosearch")) document.getElementById("toggle-search").hidden = true;
+
+  const $ = (id) => document.getElementById(id);
+  const refreshSec = Math.max(15, Number(P.get("refresh")) || 30);
+  let stop = P.get("stop") || store.get("kvv.stop") || null;
+  const limit = P.get("limit"), lines = P.get("lines");
+  const fmt = (iso) => iso ? iso.slice(11, 16) : "–";
+
+  function api(path, params) {
+    // relative URL, damit es auch hinter dem Ingress-Pfad funktioniert
+    const u = new URL("api/" + path, document.baseURI);
+    for (const [k, v] of Object.entries(params || {})) if (v) u.searchParams.set(k, v);
+    return fetch(u).then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || r.statusText);
+      return j;
+    });
+  }
+
+  function delayEl(d) {
+    if (d.cancelled) return `<span class="cancel-tag">Fällt aus</span>`;
+    if (d.delay == null || !d.realtime) return `<span class="sub">planmäßig</span>`;
+    if (d.delay <= 0) return `<span class="delay ok">pünktlich</span>`;
+    const cls = d.delay >= 5 ? "bad" : "warn";
+    return `<span class="delay ${cls}">+${d.delay} min</span>`;
+  }
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function render(data) {
+    $("title").textContent = data.stop;
+    $("list").innerHTML = data.departures.map((d) => {
+      const late = d.delay > 0 && d.realtime && !d.cancelled;
+      return `<li class="dep ${d.cancelled ? "cancelled" : ""}">
+        <span class="badge ${esc(d.type)}">${esc(d.line)}</span>
+        <div><div class="dir">${esc(d.direction)}</div>
+          <div class="sub">${esc(d.platform)}</div></div>
+        <div class="time">
+          <div>${late ? `<span class="planned">${fmt(d.planned)}</span>` : ""}<span class="big">${fmt(d.actual)}</span></div>
+          ${delayEl(d)}
+        </div></li>`;
+    }).join("") || `<li class="sub">Keine Abfahrten gefunden.</li>`;
+    $("updated").textContent = "Stand " + data.updated.slice(11, 19);
+    $("stale").textContent = data.stale ? "· Daten evtl. veraltet (KVV nicht erreichbar)" : "";
+  }
+
+  async function load() {
+    try {
+      if (!stop) stop = (await api("config")).default_stop;
+      render(await api("departures", { stop, limit, lines }));
+      $("error").textContent = "";
+    } catch (e) {
+      $("error").textContent = "Fehler: " + e.message;
+    }
+  }
+
+  // Haltestellensuche
+  let timer;
+  $("toggle-search").onclick = () => { $("search").classList.toggle("open"); $("q").focus(); };
+  $("q").oninput = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const q = $("q").value.trim();
+      if (q.length < 2) { $("results").innerHTML = ""; return; }
+      try {
+        const res = await api("stops", { q });
+        $("results").innerHTML = res.map((r) =>
+          `<button data-id="${esc(r.id)}">${esc(r.name)}</button>`).join("");
+      } catch (e) { $("error").textContent = "Suche fehlgeschlagen: " + e.message; }
+    }, 300);
+  };
+  $("results").onclick = (e) => {
+    const id = e.target.dataset && e.target.dataset.id;
+    if (!id) return;
+    stop = id; store.set("kvv.stop", id);
+    $("search").classList.remove("open"); $("q").value = ""; $("results").innerHTML = "";
+    load();
+  };
+
+  load();
+  setInterval(load, refreshSec * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+})();
+</script>
+</body>
+</html>
