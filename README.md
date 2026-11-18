@@ -53,7 +53,10 @@ It is registered automatically, so no dashboard resource has to be added.
 - Shows the actual time, the struck-through scheduled time, the delay (amber/red) and a live countdown.
 - Cancelled departures are struck through.
 - **Click a departure** for details: status, platform, stop, transport type, operator and
-  KVV notices (e.g. construction work) with links. "Show entity" opens the sensor's more-info dialog.
+  KVV notices (e.g. construction work) with a link to the public
+  [KVV traffic notices](https://www.kvv.de/fahrplan/verkehrsmeldungen.html) page (the per-notice
+  links delivered by EFA return 403 for everyone, so they are not used).
+  "Show entity" opens the sensor's more-info dialog.
   Notices are only shown when the data source is `efa`; TRIAS does not provide them.
 - Follows the user's display language (German and English) and has a visual editor.
 

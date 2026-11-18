@@ -3,7 +3,9 @@
  * Departure board with official KVV line colors; click a departure for details.
  * Config: entity (the "Next departure" sensor), title, max_departures, board, show_platform.
  */
-const CARD_VERSION = "2.1.1";
+const CARD_VERSION = "2.1.2";
+// Public page with all current KVV notices (the per-notice links from EFA are not reachable)
+const NOTICES_URL = "https://www.kvv.de/fahrplan/verkehrsmeldungen.html";
 
 const I18N = {
   en: {
@@ -28,6 +30,7 @@ const I18N = {
     transport: "Transport",
     operator: "Operator",
     notices: "Notices",
+    all_notices: "All KVV traffic notices",
     show_entity: "Show entity",
     close: "Close",
     modes: { tram: "Tram", sbahn: "S-Bahn", ubahn: "Underground tram", bus: "Bus", zug: "Train", seilbahn: "Cable car", schiff: "Ferry", sonstige: "Other" },
@@ -59,6 +62,7 @@ const I18N = {
     transport: "Verkehrsmittel",
     operator: "Betreiber",
     notices: "Hinweise",
+    all_notices: "Alle KVV-Verkehrsmeldungen",
     show_entity: "Entität anzeigen",
     close: "Schließen",
     modes: { tram: "Straßenbahn", sbahn: "S-Bahn", ubahn: "Stadtbahn (unterirdisch)", bus: "Bus", zug: "Zug", seilbahn: "Seilbahn", schiff: "Fähre", sonstige: "Sonstige" },
@@ -283,6 +287,7 @@ class KvvDeparturesCard extends HTMLElement {
       .chip.bad { background: rgba(198,40,40,.16); color: var(--error-color, #c62828); }
       h3 { margin: 6px 20px 0; font-size: .95em; font-weight: 500; color: var(--secondary-text-color, #727272); }
       ul { margin: 4px 20px 8px; padding-left: 18px; } li { margin: 4px 0; }
+      .more { margin: 0 20px 8px; font-size: .9em; }
       a { color: var(--primary-color, #03a9f4); }
       .foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px 14px; }
       button { font: inherit; font-weight: 500; border: 0; background: transparent; color: var(--primary-color, #03a9f4); border-radius: 18px; padding: 8px 14px; cursor: pointer; }
@@ -293,7 +298,8 @@ class KvvDeparturesCard extends HTMLElement {
       <div class="head"><span class="num">${esc(d.line)}</span>
         <span><div class="to" id="ttl">${esc(d.direction)}</div></span></div>
       <dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>
-      ${notices ? `<h3>${esc(t.notices)}</h3><ul>${notices}</ul>` : ""}
+      ${notices ? `<h3>${esc(t.notices)}</h3><ul>${notices}</ul>
+        <p class="more"><a href="${NOTICES_URL}" target="_blank" rel="noopener noreferrer">${esc(t.all_notices)}</a></p>` : ""}
       <div class="foot"><button data-act="entity">${esc(t.show_entity)}</button><button data-act="close">${esc(t.close)}</button></div>
     </div></div>`;
 

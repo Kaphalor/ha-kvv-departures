@@ -62,6 +62,9 @@ check("dialog opens in body", !!dlg);
 check("dialog header uses line color", dlg && dlg.head === hex(data.departures[idx].color), dlg && dlg.head);
 check("dialog shows delay + stop + operator", dlg && /verspätet/.test(dlg.text) && dlg.text.includes("Durlacher Tor") && dlg.text.includes("Verkehrsbetriebe"));
 check("EFA: notices shown", dlg && dlg.text.includes("Hinweise") && dlg.text.includes("Bauarbeiten"));
+const links = await page.evaluate(() => [...document.querySelector("[data-kvv-dialog]").shadowRoot.querySelectorAll("a")].map((a) => a.href));
+check("notices link only to the public KVV page", links.length === 1 && links[0] === "https://www.kvv.de/fahrplan/verkehrsmeldungen.html", links.join());
+check("no link to the dead EFA content endpoint", !links.some((h) => h.includes("XSLT_CM_SHOWADDINFO")));
 check("platform not duplicated", dlg && !/Gleis\s*Gleis/.test(dlg.text) && /Gleis\s*4/.test(dlg.text), dlg && dlg.text.match(/Gleis.{0,12}/)?.[0]);
 await page.screenshot({ path: `${OUT}/dialog_de.png` });
 

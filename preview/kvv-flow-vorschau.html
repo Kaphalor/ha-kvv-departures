@@ -138,6 +138,7 @@
   .dlg2 dt { color: var(--muted); } .dlg2 dd { margin: 0; }
   .dlg2 h4 { margin: 4px 20px 0; font-weight: 500; font-size: .9rem; color: var(--muted); }
   .dlg2 ul { margin: 4px 20px 8px; padding-left: 18px; } .dlg2 a { color: var(--primary); }
+  .dlg2 .more { margin: 0 20px 8px; font-size: .9rem; }
   .dlg2 .actions { padding: 6px 14px 14px; margin: 0; }
   .chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: .88rem; font-weight: 500; background: var(--chip); }
   .chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
@@ -290,7 +291,8 @@
       const d = S.sel == null ? null : DEPS[S.sel];
       const status = d && (d.cancelled ? ["bad", "Fällt aus"] : d.delay > 0 ? [cls(d), `${d.delay} Minuten verspätet`] : ["ok", "Pünktlich (Echtzeit)"]);
       const notices = d && S.source === "efa" && d.infos.length
-        ? `<h4>Hinweise</h4><ul>${d.infos.map((n) => `<li><a href="#" onclick="return false">${esc(n)}</a></li>`).join("")}</ul>` : "";
+        ? `<h4>Hinweise</h4><ul>${d.infos.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+           <p class="more"><a href="https://www.kvv.de/fahrplan/verkehrsmeldungen.html" target="_blank" rel="noopener noreferrer">Alle KVV-Verkehrsmeldungen</a></p>` : "";
       const dialog = d ? `<div class="scrim"><div class="dlg2" role="dialog" aria-modal="true" aria-labelledby="dto">
           <div class="dh" style="background:${d.bg};color:${d.fg}"><span class="dn">${d.line}</span><span class="dto" id="dto">${esc(d.dir)}</span></div>
           <dl>

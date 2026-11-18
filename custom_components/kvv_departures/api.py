@@ -158,6 +158,11 @@ def parse_efa_departure(raw: dict) -> Departure | None:
     )
 
 
+# EFA attaches links to this content endpoint, but it answers 403 Forbidden to
+# everyone. Keep the notice text, drop the dead link.
+_DEAD_NOTICE_LINK = "/cm/XSLT_CM_SHOWADDINFO_REQUEST"
+
+
 def _efa_infos(line_infos: Any) -> tuple[tuple[str, str], ...]:
     """Disruption/construction notices attached to a departure (max. 3)."""
     if not isinstance(line_infos, dict):
@@ -166,8 +171,9 @@ def _efa_infos(line_infos: Any) -> tuple[tuple[str, str], ...]:
     for info in _as_list(line_infos.get("lineInfo")):
         text = info.get("infoText") or {}
         title = (text.get("subtitle") or info.get("infoLinkText") or "").strip()
+        url = info.get("infoLinkURL") or ""
         if title:
-            out.append((title, info.get("infoLinkURL") or ""))
+            out.append((title, "" if _DEAD_NOTICE_LINK in url else url))
     return tuple(out[:3])
 
 
