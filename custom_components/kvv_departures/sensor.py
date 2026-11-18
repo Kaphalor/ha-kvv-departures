@@ -57,6 +57,7 @@ class NextDepartureSensor(_Base):
     def extra_state_attributes(self):
         dep = self._first()
         attrs = {"stop": self.coordinator.stop.name,
+                 "source": self.coordinator.source,
                  "departures": [d.as_dict() for d in self.coordinator.data or []]}
         if dep:
             attrs |= {"line": dep.line, "direction": dep.direction,

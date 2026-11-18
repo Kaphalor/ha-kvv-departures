@@ -110,6 +110,40 @@
   .sw { width: 38px; height: 22px; border-radius: 12px; background: var(--primary); position: relative; flex: none; }
   .sw::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; }
   .temp { font-size: 2rem; font-weight: 300; }
+  /* Abfahrtstafel-Karte */
+  .board { padding: 0; overflow: hidden; background: #0d1b2e; color: #f4f7fb; border-color: #0d1b2e;
+           --b-muted: #9fb0c6; --b-time: #ffd34d; --b-ok: #6ee7a0; --b-warn: #ffb454; --b-bad: #ff7b7b; }
+  .bhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 12px 16px; background: #13294a; border-bottom: 2px solid #ffd34d; }
+  .btitle { font-weight: 600; font-size: 1.05rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bupd { color: var(--b-muted); font-size: .78rem; white-space: nowrap; }
+  .brow { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px;
+          align-items: center; padding: 10px 16px; cursor: pointer; border-top: 1px solid rgba(255,255,255,.12); }
+  .brow:first-of-type { border-top: 0; }
+  .brow:hover { background: rgba(255,255,255,.07); }
+  .brow:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .bbadge { min-width: 3.3em; padding: 4px 8px; text-align: center; font-weight: 700; border-radius: 6px; box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+  .bmid { display: grid; min-width: 0; }
+  .bdir { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bsub { color: var(--b-muted); font-size: .78rem; }
+  .btime { display: grid; text-align: right; font-variant-numeric: tabular-nums; }
+  .bt { font-size: 1.3rem; font-weight: 700; color: var(--b-time); line-height: 1.15; }
+  .bplan { color: var(--b-muted); font-size: .72rem; font-weight: 400; margin-right: 6px; }
+  .bd { font-size: .78rem; font-weight: 600; } .bd.ok { color: var(--b-ok); } .bd.warn { color: var(--b-warn); } .bd.bad { color: var(--b-bad); }
+  .brow.cx .bdir, .brow.cx .bt { text-decoration: line-through; opacity: .6; }
+  .dlg2 { background: var(--panel); color: var(--fg); border-radius: 16px; width: min(420px, 100%); max-height: 100%; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+  .dh { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+  .dn { font-size: 1.9rem; font-weight: 800; line-height: 1; min-width: 1.6em; }
+  .dto { font-size: 1.05rem; font-weight: 600; }
+  .dlg2 dl { margin: 0; padding: 8px 20px; display: grid; grid-template-columns: max-content 1fr; gap: 9px 16px; }
+  .dlg2 dt { color: var(--muted); } .dlg2 dd { margin: 0; }
+  .dlg2 h4 { margin: 4px 20px 0; font-weight: 500; font-size: .9rem; color: var(--muted); }
+  .dlg2 ul { margin: 4px 20px 8px; padding-left: 18px; } .dlg2 a { color: var(--primary); }
+  .dlg2 .actions { padding: 6px 14px 14px; margin: 0; }
+  .chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: .88rem; font-weight: 500; background: var(--chip); }
+  .chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+  .segs { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg { font: inherit; border: 0; background: transparent; color: var(--fg); padding: 6px 18px; cursor: pointer; }
+  .seg.on { background: var(--primary); color: var(--primary-fg); }
   .tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 </style>
 
@@ -144,9 +178,9 @@
     ["Haltestelle auswählen", "Treffer aus dem KVV"],
     ["Gerät & Entitäten", "Was angelegt wird"],
     ["Einstellungen", "Filter, Fußweg, Datenquelle"],
-    ["Dashboard", "Karten mit Abfahrten"],
+    ["Dashboard", "Abfahrtstafel, Klick für Details"],
   ];
-  const S = { step: 0, q: "Durlach", stop: null, search: "" };
+  const S = { step: 0, q: "Durlach", stop: null, search: "", sel: null, source: "efa" };
   const $ = (s) => document.querySelector(s);
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const slug = (t) => t.toLowerCase().replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss")
@@ -156,11 +190,12 @@
   // Fiktive Abfahrten relativ zu "jetzt"
   const T0 = Date.now();
   const DEPS = [
-    { line: "S5", dir: "Knielingen Rheinbergstraße", mode: "sbahn", plat: "Gleis 1", off: 2, delay: 0 },
-    { line: "3",  dir: "Rintheim", mode: "tram", plat: "Gleis 4", off: 5, delay: 4 },
-    { line: "1",  dir: "Heide", mode: "tram", plat: "Gleis 2", off: 8, delay: 1 },
-    { line: "S7", dir: "Achern", mode: "sbahn", plat: "Gleis 1", off: 11, delay: 0, cancelled: true },
-    { line: "3",  dir: "Daxlanden Waidweg", mode: "tram", plat: "Gleis 3", off: 14, delay: 7 },
+    // Farben = offizielle KVV-Linienfarben (GTFS route_color)
+    { line: "S5", dir: "Knielingen Rheinbergstraße", mode: "sbahn", plat: "Gleis 1", off: 2, delay: 0, bg: "#f39b9a", fg: "#000000", operator: "Albtal-Verkehrs-Gesellschaft mbH", infos: [] },
+    { line: "3",  dir: "Rintheim", mode: "tram", plat: "Gleis 4", off: 5, delay: 4, bg: "#966c29", fg: "#ffffff", operator: "Verkehrsbetriebe Karlsruhe GmbH", infos: ["Karlsruhe: Bauarbeiten im VBK-Netz (Phase 5)"] },
+    { line: "1",  dir: "Heide", mode: "tram", plat: "Gleis 2", off: 8, delay: 1, bg: "#e30613", fg: "#ffffff", operator: "Verkehrsbetriebe Karlsruhe GmbH", infos: ["Karlsruhe: Bauarbeiten im VBK-Netz (Phase 5)"] },
+    { line: "S7", dir: "Achern", mode: "sbahn", plat: "Gleis 1", off: 11, delay: 0, cancelled: true, bg: "#ffed00", fg: "#000000", operator: "Albtal-Verkehrs-Gesellschaft mbH", infos: [] },
+    { line: "3",  dir: "Daxlanden Waidweg", mode: "tram", plat: "Gleis 3", off: 14, delay: 7, bg: "#966c29", fg: "#ffffff", operator: "Verkehrsbetriebe Karlsruhe GmbH", infos: ["Karlsruhe: Bauarbeiten im VBK-Netz (Phase 5)"] },
   ];
   const hhmm = (d) => d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   const when = (off, delay = 0) => new Date(T0 + (off + delay) * 60000);
@@ -240,24 +275,47 @@
         <div class="toggle"><span>Nur diese Linien<div class="sub">leer = alle</div></span><span class="pill">S5, S7, 1, 3</span></div>
         <div class="toggle"><span>Fußweg (Minuten)<div class="sub">frühere Abfahrten ausblenden</div></span><span class="pill">3</span></div>
         <div class="toggle"><span>Aktualisierung</span><span class="pill">60 s</span></div>
-        <div class="toggle"><span>Datenquelle<div class="sub">TRIAS braucht Zugang vom KVV</div></span><span class="pill">efa</span></div>
+        <div class="toggle"><span>Datenquelle<div class="sub">TRIAS braucht Zugang vom KVV · Hinweise nur mit efa</div></span><span class="pill">efa</span></div>
         <div class="actions"><button type="button" class="btn ghost" data-go="4">Abbrechen</button><button class="btn" type="submit">Absenden</button></div>
       </form></div>`),
     // 6
     () => {
-      const base = "sensor." + slug(shortName());
+      const cls = (d) => d.cancelled ? "bad" : d.delay >= 5 ? "bad" : d.delay > 0 ? "warn" : "ok";
+      const dtxt = (d) => d.cancelled ? "Fällt aus" : d.delay > 0 ? `+${d.delay} Min.` : "pünktlich";
+      const row = (d, i) => `<button class="brow ${d.cancelled ? "cx" : ""}" data-sel="${i}" aria-haspopup="dialog">
+          <span class="bbadge" style="background:${d.bg};color:${d.fg}">${d.line}</span>
+          <span class="bmid"><span class="bdir">${esc(d.dir)}</span><span class="bsub">${d.plat}${d.cancelled ? "" : " · in " + (d.off + d.delay) + " Min."}</span></span>
+          <span class="btime"><span class="bt">${d.delay > 0 && !d.cancelled ? `<s class="bplan">${planned(d)}</s>` : ""}${actual(d)}</span><span class="bd ${cls(d)}">${dtxt(d)}</span></span></button>`;
+
+      const d = S.sel == null ? null : DEPS[S.sel];
+      const status = d && (d.cancelled ? ["bad", "Fällt aus"] : d.delay > 0 ? [cls(d), `${d.delay} Minuten verspätet`] : ["ok", "Pünktlich (Echtzeit)"]);
+      const notices = d && S.source === "efa" && d.infos.length
+        ? `<h4>Hinweise</h4><ul>${d.infos.map((n) => `<li><a href="#" onclick="return false">${esc(n)}</a></li>`).join("")}</ul>` : "";
+      const dialog = d ? `<div class="scrim"><div class="dlg2" role="dialog" aria-modal="true" aria-labelledby="dto">
+          <div class="dh" style="background:${d.bg};color:${d.fg}"><span class="dn">${d.line}</span><span class="dto" id="dto">${esc(d.dir)}</span></div>
+          <dl>
+            <dt>Abfahrt</dt><dd><b>${actual(d)}</b>${d.delay > 0 && !d.cancelled ? ` <span class="sub">(planmäßig ${planned(d)})</span>` : ""}</dd>
+            <dt>Status</dt><dd><span class="chip ${status[0]}">${status[1]}</span></dd>
+            <dt>Gleis</dt><dd>${esc(d.plat.replace(/^Gleis\s+/, ""))}</dd>
+            <dt>Haltestelle</dt><dd>${esc(shortName())}</dd>
+            <dt>Verkehrsmittel</dt><dd>${d.mode === "sbahn" ? "S-Bahn" : "Straßenbahn"}</dd>
+            <dt>Betreiber</dt><dd>${esc(d.operator)}</dd>
+          </dl>${notices}
+          <div class="actions"><button class="btn ghost" data-close="1" title="Öffnet in Home Assistant den Sensor-Dialog (hier nicht nachgebaut)">Entität anzeigen</button><button class="btn ghost" data-close="1">Schließen</button></div>
+        </div></div>` : "";
+
+      const src = (id, label) => `<button class="seg ${S.source === id ? "on" : ""}" data-src="${id}" aria-pressed="${S.source === id}">${label}</button>`;
       return frame({ t: "Übersicht", dash: true }, `
         <div class="dash">
-          <div class="card"><div class="tag">Markdown-Karte</div><h2>${esc(shortName())}</h2>
-            <div class="md">${DEPS.map((d) => `<div class="dep"><span class="badge ${d.mode}">${d.line}</span>
-              <span class="${d.cancelled ? "cx" : ""}">${esc(d.dir)}</span>
-              <span><span class="t ${d.cancelled ? "cx" : ""}">${actual(d)}</span> ${d.cancelled ? '<span class="late hi">fällt aus</span>' : d.delay > 0 ? `<span class="late ${d.delay >= 5 ? "hi" : ""}">+${d.delay}</span>` : ""}</span></div>`).join("")}</div></div>
-          <div class="card"><div class="tag">Entities-Karte</div><h2>Nächste Bahnen</h2>
-            ${DEPS.slice(0, 3).map((d, i) => `<div class="erow"><div class="n"><b>Abfahrt ${i + 1}</b><span class="sub">${d.line} → ${esc(d.dir)}</span></div><div style="text-align:right"><b class="val" style="color:var(--fg)">${actual(d)}</b><div>${delayHtml(d)}</div></div></div>`).join("")}
-            <div class="erow"><div class="n"><b>Verspätung nächste</b><span class="sub">${base}_verspatung…</span></div><b class="val" style="color:var(--fg)">${DEPS[0].delay} min</b></div></div>
+          <div class="card board">
+            <header class="bhead"><span class="btitle">${esc((S.stop || STOPS[0]).name)}</span><span class="bupd">Stand ${hhmm(new Date(T0))}</span></header>
+            ${DEPS.map(row).join("")}
+          </div>
+          <div class="card"><div class="tag">Einstellung der Integration</div><h2>Datenquelle</h2>
+            <div class="segs">${src("efa", "efa")}${src("trias", "trias")}</div>
+            <div class="sub" style="margin-top:8px">${S.source === "efa" ? "Der Klick-Dialog zeigt KVV-Hinweise (z. B. Bauarbeiten)." : "TRIAS liefert keine Hinweise: der Abschnitt entfällt im Dialog."} Klicke links auf eine Abfahrt.</div></div>
           <div class="card"><div class="tag">Wetter</div><div class="temp">7 °C</div><div class="sub">bewölkt · Karlsruhe</div></div>
-          <div class="card"><div class="tag">Licht</div><div class="erow"><div class="n"><b>Wohnzimmer</b></div><span class="sw"></span></div><div class="erow"><div class="n"><b>Flur</b></div><span class="sw" style="background:var(--line)"></span></div></div>
-        </div>`);
+        </div>`, dialog);
     },
   ];
 
@@ -273,6 +331,11 @@
   const go = (n) => { S.step = Math.max(0, Math.min(STEPS.length - 1, n)); render(); };
 
   document.addEventListener("click", (e) => {
+    const dep = e.target.closest("[data-sel]");
+    if (dep) { S.sel = +dep.dataset.sel; return render(); }
+    const src = e.target.closest("[data-src]");
+    if (src) { S.source = src.dataset.src; return render(); }
+    if (S.sel != null && (e.target.closest("[data-close]") || e.target.classList.contains("scrim"))) { S.sel = null; return render(); }
     const t = e.target.closest("[data-go],[data-jump],[data-stop]"); if (!t) return;
     if (t.dataset.jump) { const j = +t.dataset.jump; if (j >= 3 && !S.q) S.q = "Durlach"; return go(j); }
     if (t.dataset.go) return go(+t.dataset.go);
@@ -296,7 +359,10 @@
   });
   $("#prev").onclick = () => go(S.step - 1);
   $("#next").onclick = () => go(S.step + 1);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.step > 0 && S.step < 4) go(0); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (S.sel != null) { S.sel = null; render(); } else if (S.step > 0 && S.step < 4) go(0);
+  });
 
   S.stop = STOPS[0];
   render();

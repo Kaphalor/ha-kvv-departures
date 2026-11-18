@@ -193,6 +193,7 @@ class KvvDeparturesCard extends HTMLElement {
     } else {
       const all = Array.isArray(st.attributes.departures) ? st.attributes.departures : [];
       this._deps = all.slice(0, c.max_departures > 0 ? c.max_departures : all.length);
+      this._source = st.attributes.source;  // notices are only provided by the EFA source
       body = this._deps.length ? this._deps.map((d, i) => this._row(d, i, t)).join("")
                                : `<div class="empty">${esc(t.no_departures)}</div>`;
     }
@@ -233,12 +234,13 @@ class KvvDeparturesCard extends HTMLElement {
     const rows = [
       [t.departure, `<b>${esc(d.time)}</b>${late ? ` <span class="muted">(${esc(fmt(t.planned, { t: d.planned_time }))})</span>` : ""}`],
       [t.status, `<span class="chip ${di.cls}">${esc(status)}</span>`],
-      d.platform && [t.platform, esc(d.platform)],
+      // KVV already sends "Gleis 4": drop the word, the row label says it
+      d.platform && [t.platform, esc(d.platform.replace(/^\s*(gleis|platform|steig|bahnsteig)\s+/i, ""))],
       d.stop && [t.stop, esc(d.stop)],
       [t.transport, esc((t.modes[d.mode]) || t.modes.sonstige)],
       d.operator && [t.operator, esc(d.operator)],
     ].filter(Boolean);
-    const notices = (d.infos || []).map((n) => {
+    const notices = (this._source !== "efa" ? [] : d.infos || []).map((n) => {
       const link = /^https?:\/\//i.test(n.url || "") ? `<a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>` : esc(n.title);
       return `<li>${link}</li>`;
     }).join("");

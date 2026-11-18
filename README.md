@@ -54,6 +54,7 @@ It is registered automatically, so no dashboard resource has to be added.
 - Cancelled departures are struck through.
 - **Click a departure** for details: status, platform, stop, transport type, operator and
   KVV notices (e.g. construction work) with links. "Show entity" opens the sensor's more-info dialog.
+  Notices are only shown when the data source is `efa`; TRIAS does not provide them.
 - Follows the user's display language (German and English) and has a visual editor.
 
 Add it via *Edit dashboard → Add card → KVV Departures*, or in YAML:

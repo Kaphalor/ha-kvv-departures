@@ -12,7 +12,7 @@ const errors = [];
 let failures = 0;
 const check = (name, ok, extra = "") => { console.log(`${ok ? "PASS" : "FAIL"} ${name} ${extra}`); if (!ok) failures++; };
 
-async function run(lang, dark, shot, config) {
+async function run(lang, dark, shot, config, source = "efa") {
   const page = await browser.newPage({ viewport: { width: 520, height: 760 } });
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -24,7 +24,7 @@ async function run(lang, dark, shot, config) {
     ha-card { display:block; background:var(--card-background-color); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.2); }
   </style></head><body></body></html>`);
   await page.addScriptTag({ content: js });
-  await page.evaluate(({ data, lang, config }) => {
+  await page.evaluate(({ data, lang, config, source }) => {
     const el = document.createElement("kvv-departures-card");
     document.body.appendChild(el);
     window.__moreInfo = [];
@@ -33,10 +33,10 @@ async function run(lang, dark, shot, config) {
     el.hass = {
       language: lang, locale: { language: lang },
       states: { "sensor.durlacher_tor_next_departure": { state: data.departures[0].actual, last_updated: new Date().toISOString(),
-        attributes: { stop: data.stop, departures: data.departures } } },
+        attributes: { stop: data.stop, source, departures: data.departures } } },
     };
     window.__el = el;
-  }, { data, lang, config: config || {} });
+  }, { data, lang, config: config || {}, source });
   await page.waitForTimeout(150);
   return page;
 }
@@ -61,6 +61,8 @@ const dlg = await page.evaluate(() => {
 check("dialog opens in body", !!dlg);
 check("dialog header uses line color", dlg && dlg.head === hex(data.departures[idx].color), dlg && dlg.head);
 check("dialog shows delay + stop + operator", dlg && /verspätet/.test(dlg.text) && dlg.text.includes("Durlacher Tor") && dlg.text.includes("Verkehrsbetriebe"));
+check("EFA: notices shown", dlg && dlg.text.includes("Hinweise") && dlg.text.includes("Bauarbeiten"));
+check("platform not duplicated", dlg && !/Gleis\s*Gleis/.test(dlg.text) && /Gleis\s*4/.test(dlg.text), dlg && dlg.text.match(/Gleis.{0,12}/)?.[0]);
 await page.screenshot({ path: `${OUT}/dialog_de.png` });
 
 // 3) Escape closes dialog and returns focus; "show entity" fires hass-more-info
@@ -77,6 +79,14 @@ page = await run("en", false, "light_en", { board: false, max_departures: 4, tit
 check("max_departures", (await page.evaluate(() => window.__el.shadowRoot.querySelectorAll(".row").length)) === 4);
 check("en strings + title", await page.evaluate(() => { const t = window.__el.shadowRoot.textContent; return t.includes("Updated") && t.includes("My stop") && t.includes("Cancelled"); }));
 await page.screenshot({ path: `${OUT}/light_en.png` });
+await page.close();
+
+// 4b) TRIAS source: notices must stay hidden even if a departure carries some
+page = await run("de", true, "trias", {}, "trias");
+await page.evaluate((i) => window.__el.shadowRoot.querySelectorAll(".row")[i].click(), idx);
+const trText = await page.evaluate(() => document.querySelector("[data-kvv-dialog]").shadowRoot.textContent);
+check("TRIAS: no notices section", !trText.includes("Hinweise") && !trText.includes("Bauarbeiten"));
+check("TRIAS: other details still shown", trText.includes("Betreiber") && trText.includes("Gleis"));
 await page.close();
 
 // 5) Missing entity / unavailable
