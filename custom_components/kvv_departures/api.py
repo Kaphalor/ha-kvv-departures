@@ -1,4 +1,4 @@
-"""API-Clients für KVV-Abfahrten: EFA (inoffiziell) und TRIAS (offiziell)."""
+"""API clients for KVV departures: EFA (unofficial) and TRIAS (official)."""
 from __future__ import annotations
 
 import asyncio
@@ -15,12 +15,12 @@ TZ = ZoneInfo("Europe/Berlin")
 EFA_BASE = "https://projekte.kvv-efa.de/sl3-alone"
 TIMEOUT = aiohttp.ClientTimeout(total=20)
 
-# EFA motType -> interner Typ
+# EFA motType -> internal type
 _EFA_MOT = {
     "0": "zug", "1": "sbahn", "2": "ubahn", "3": "ubahn", "4": "tram",
     "5": "bus", "6": "bus", "7": "bus", "8": "seilbahn", "9": "schiff",
 }
-# TRIAS PtMode -> interner Typ
+# TRIAS PtMode -> internal type
 _TRIAS_MODE = {
     "rail": "zug", "urbanRail": "sbahn", "metro": "ubahn", "tram": "tram",
     "bus": "bus", "coach": "bus", "trolleyBus": "bus", "water": "schiff",
@@ -29,15 +29,15 @@ _TRIAS_MODE = {
 
 
 class KvvError(Exception):
-    """Allgemeiner Fehler bei der Abfrage."""
+    """Generic request error."""
 
 
 class KvvAuthError(KvvError):
-    """Zugangsdaten abgelehnt (TRIAS)."""
+    """Credentials rejected (TRIAS)."""
 
 
 class KvvStopError(KvvError):
-    """Haltestelle unbekannt oder nicht eindeutig."""
+    """Stop unknown or ambiguous."""
 
 
 @dataclass(frozen=True)
@@ -124,7 +124,7 @@ def parse_efa_departure(raw: dict) -> Departure | None:
 
 
 class EfaClient:
-    """Inoffizielle EFA-Schnittstelle (ohne Anmeldung nutzbar)."""
+    """Unofficial EFA interface (no login required)."""
 
     def __init__(self, session: aiohttp.ClientSession, base: str = EFA_BASE) -> None:
         self._session = session
@@ -139,7 +139,7 @@ class EfaClient:
                 resp.raise_for_status()
                 return await resp.json(content_type=None)
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as err:
-            raise KvvError(f"KVV-EFA nicht erreichbar: {err}") from err
+            raise KvvError(f"KVV EFA unreachable: {err}") from err
 
     async def search_stops(self, query: str) -> list[Stop]:
         data = await self._get("XML_STOPFINDER_REQUEST", {
@@ -166,9 +166,10 @@ class EfaClient:
             "name_dm": stop.id, "type_dm": "stop",
             "useOnlyStops": "1", "useRealtime": "1", "limit": str(limit),
         })
-        if isinstance((data.get("dm") or {}).get("points"), list):
-            # Kandidatenliste = Haltestelle nicht eindeutig/unbekannt
-            raise KvvStopError(f"Haltestelle {stop.id} unbekannt")
+        points = (data.get("dm") or {}).get("points")
+        if points is None or isinstance(points, list):
+            # No match at all (null) or a candidate list: unknown or ambiguous
+            raise KvvStopError(f"Stop {stop.id} unknown or ambiguous")
         deps = [parse_efa_departure(d) for d in _as_list(data.get("departureList"))]
         return sorted((d for d in deps if d), key=lambda d: d.actual)
 
@@ -220,16 +221,16 @@ def _iso(value: str) -> datetime | None:
 
 
 def parse_trias_departures(xml_text: str) -> list[Departure]:
-    """Wandelt eine TRIAS-StopEventResponse in Abfahrten um."""
+    """Convert a TRIAS StopEventResponse into departures."""
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as err:
-        raise KvvError(f"Ungültige TRIAS-Antwort: {err}") from err
+        raise KvvError(f"Invalid TRIAS response: {err}") from err
 
     for err_el in root.iter():
         if err_el.tag.rsplit("}", 1)[-1] == "ErrorMessage":
-            msg = _text(err_el, "Text", "Text") or _text(err_el, "Text") or "unbekannt"
-            raise KvvError(f"TRIAS-Fehler: {msg}")
+            msg = _text(err_el, "Text", "Text") or _text(err_el, "Text") or "unknown"
+            raise KvvError(f"TRIAS error: {msg}")
 
     result: list[Departure] = []
     for ev in (e for e in root.iter() if e.tag.rsplit("}", 1)[-1] == "StopEvent"):
@@ -258,7 +259,7 @@ def parse_trias_departures(xml_text: str) -> list[Departure]:
 
 
 class TriasClient:
-    """Offizielle TRIAS-Schnittstelle (benötigt Zugang vom KVV)."""
+    """Official TRIAS interface (requires access granted by KVV)."""
 
     def __init__(self, session: aiohttp.ClientSession, url: str, requestor_ref: str) -> None:
         self._session = session
@@ -296,9 +297,9 @@ class TriasClient:
                 headers={"Content-Type": "text/xml; charset=utf-8"}, timeout=TIMEOUT,
             ) as resp:
                 if resp.status in (401, 403):
-                    raise KvvAuthError("TRIAS-Zugang abgelehnt")
+                    raise KvvAuthError("TRIAS access denied")
                 resp.raise_for_status()
                 text = await resp.text()
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise KvvError(f"TRIAS nicht erreichbar: {err}") from err
+            raise KvvError(f"TRIAS unreachable: {err}") from err
         return parse_trias_departures(text)

@@ -1,4 +1,4 @@
-"""Konstanten für KVV Abfahrten."""
+"""Constants for KVV Departures."""
 DOMAIN = "kvv_departures"
 
 CONF_STOP_ID = "stop_id"

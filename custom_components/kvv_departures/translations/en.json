@@ -1,28 +1,39 @@
 {
   "config": {
     "step": {
-      "user": { "title": "Search KVV stop", "data": { "query": "Stop name" } },
-      "select": { "title": "Select stop", "data": { "stop": "Stop" } }
+      "user": {
+        "title": "Search KVV stop",
+        "description": "Enter the name of the stop, e.g. \"Marktplatz\".",
+        "data": { "query": "Stop" }
+      },
+      "select": {
+        "title": "Select stop",
+        "data": { "stop": "Stop" }
+      }
     },
-    "error": { "cannot_connect": "Cannot reach KVV.", "no_results": "No stop found." },
+    "error": {
+      "cannot_connect": "Cannot reach KVV.",
+      "no_results": "No stop found."
+    },
     "abort": { "already_configured": "This stop is already configured." }
   },
   "options": {
     "step": {
       "init": {
         "title": "Settings",
+        "description": "TRIAS requires credentials from KVV (fahrplan@kvv.karlsruhe.de). Choose \"efa\" if you have none.",
         "data": {
           "source": "Data source (efa / trias)",
           "trias_url": "TRIAS URL",
           "trias_requestor_ref": "TRIAS requestor reference",
           "departures": "Number of departures",
           "lines": "Only these lines (comma separated, empty = all)",
-          "walk_minutes": "Walking time in minutes",
+          "walk_minutes": "Walking time in minutes (hides earlier departures)",
           "scan_interval": "Update interval in seconds"
         }
       }
     },
-    "error": { "trias_missing": "TRIAS needs URL and requestor reference." }
+    "error": { "trias_missing": "TRIAS needs a URL and a requestor reference." }
   },
   "entity": {
     "sensor": {

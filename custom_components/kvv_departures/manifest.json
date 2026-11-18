@@ -1,6 +1,6 @@
 {
   "domain": "kvv_departures",
-  "name": "KVV Abfahrten",
+  "name": "KVV Departures",
   "codeowners": [],
   "config_flow": true,
   "documentation": "https://github.com/Kaphalor/ha-kvv-departures",

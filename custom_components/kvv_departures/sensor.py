@@ -1,4 +1,4 @@
-"""Sensoren für KVV Abfahrten."""
+"""Sensors for KVV Departures."""
 from __future__ import annotations
 
 from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity,
@@ -38,7 +38,7 @@ class _Base(CoordinatorEntity[KvvCoordinator], SensorEntity):
 
 
 class NextDepartureSensor(_Base):
-    """Nächste Abfahrt; Attribut `departures` enthält die ganze Liste."""
+    """Next departure; the `departures` attribute holds the full list."""
 
     _attr_translation_key = "next_departure"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
@@ -79,7 +79,7 @@ class NextDelaySensor(_Base):
 
 
 class DepartureSensor(_Base):
-    """Einzelne Abfahrt n (1-basiert) - direkt in Entities-Karten nutzbar."""
+    """Single departure n (1-based), usable directly in entities cards."""
 
     _attr_translation_key = "departure"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
