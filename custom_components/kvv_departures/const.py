@@ -1,6 +1,6 @@
 """Constants for KVV Departures."""
 DOMAIN = "kvv_departures"
-VERSION = "2.1.0"  # keep in sync with manifest.json (checked by tests)
+VERSION = "2.1.1"  # keep in sync with manifest.json (checked by tests)
 
 # Lovelace card shipped with the integration
 CARD_FILE = "kvv-departures-card.js"
