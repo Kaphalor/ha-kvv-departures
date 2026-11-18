@@ -1,79 +1,114 @@
-# KVV Abfahrten für Home Assistant
+<p align="center">
+  <img src="custom_components/kvv_departures/brand/icon@2x.png" width="128" alt="KVV Departures icon">
+</p>
 
-Native Integration (HACS-fähig): Abfahrten inkl. Verspätung und Ausfällen für
-jede Haltestelle im KVV-Netz als normale Sensoren. Kein iframe, kein Addon nötig.
+# KVV Departures for Home Assistant
 
-> Der Ordner `kvv_departures/` und `repository.yaml` gehören zum früheren
-> Addon-Entwurf und werden nicht mehr gebraucht.
+A native Home Assistant integration (HACS compatible) that shows live departures,
+delays and cancellations for any stop in the network of the Karlsruher
+Verkehrsverbund (KVV), as regular sensors. No iframe and no add-on required.
+
+The UI follows each user's display language. German and English are included;
+Home Assistant picks the translation per user, so every household member sees
+the setup dialogs and entity names in their own language.
 
 ## Installation
 
-1. Ordner `custom_components/kvv_departures` nach `<config>/custom_components/` kopieren
-   (oder dieses Repo in HACS als *Benutzerdefiniertes Repository* → Integration hinzufügen).
-2. Home Assistant neu starten.
-3. *Einstellungen → Geräte & Dienste → Integration hinzufügen → KVV Abfahrten*,
-   Haltestelle suchen und auswählen. Pro Haltestelle ein Eintrag.
+**HACS (recommended)**
 
-Einstellungen (Zahnrad am Eintrag): Anzahl Abfahrten, Linienfilter, Fußweg in
-Minuten, Aktualisierungsintervall, Datenquelle.
+1. HACS → ⋮ → *Custom repositories* → add `https://github.com/Kaphalor/ha-kvv-departures` as type *Integration*.
+2. Install *KVV Departures* and restart Home Assistant.
 
-## Entitäten pro Haltestelle
+**Manual**
 
-| Entität | Inhalt |
+1. Copy `custom_components/kvv_departures` to `<config>/custom_components/`.
+2. Restart Home Assistant.
+
+Then go to *Settings → Devices & services → Add integration → KVV Departures*,
+search for a stop and select it. Add the integration again for each additional stop.
+
+Settings (gear icon on the entry): number of departures, line filter, walking
+time in minutes, update interval and data source.
+
+## Entities per stop
+
+| Entity | Content |
 |---|---|
-| `sensor.<haltestelle>_nachste_abfahrt` | Zeitstempel der nächsten Abfahrt (Ist-Zeit); Attribut `departures` = komplette Liste |
-| `sensor.<haltestelle>_verspatung_nachste_abfahrt` | Verspätung in Minuten |
-| `sensor.<haltestelle>_abfahrt_1` … `_N` | je eine Abfahrt: Attribute `line`, `direction`, `platform`, `delay`, `planned_time`, `time`, `cancelled`, `text` |
+| Next departure | Timestamp of the next departure (actual time). The attribute `departures` holds the complete list. |
+| Delay of next departure | Delay in minutes. |
+| Departure 1 … N | One entity per departure. Attributes: `line`, `direction`, `platform`, `delay`, `planned_time`, `time`, `cancelled`, `text`. |
 
-## Dashboard (nativ)
+Entity IDs are generated from the entity names in Home Assistant's system
+language when the entity is first created, for example
+`sensor.durlacher_tor_next_departure` (English) or
+`sensor.durlacher_tor_nachste_abfahrt` (German). Check the exact IDs under
+*Devices & services → KVV Departures*.
 
-**Markdown-Karte** mit Verspätungen:
+## Dashboard
+
+**Markdown card** with delays:
 
 ```yaml
 type: markdown
 title: Durlacher Tor
 content: >
-  {% set deps = state_attr('sensor.durlacher_tor_nachste_abfahrt', 'departures') or [] %}
+  {% set deps = state_attr('sensor.durlacher_tor_next_departure', 'departures') or [] %}
   {% for d in deps %}
   **{{ d.line }}** {{ d.direction }} – **{{ d.time }}**
-  {%- if d.cancelled %} ❌ fällt aus
-  {%- elif d.delay and d.delay > 0 %} (+{{ d.delay }} min, planmäßig {{ d.planned_time }})
+  {%- if d.cancelled %} ❌ cancelled
+  {%- elif d.delay and d.delay > 0 %} (+{{ d.delay }} min, scheduled {{ d.planned_time }})
   {%- endif %}
 
   {% endfor %}
 ```
 
-**Entities-Karte** mit den Einzel-Sensoren:
+The text inside a card template is your own, so write it in whichever
+language you like.
+
+**Entities card** using the single-departure sensors:
 
 ```yaml
 type: entities
 entities:
-  - entity: sensor.durlacher_tor_abfahrt_1
+  - entity: sensor.durlacher_tor_departure_1
     secondary_info: attribute
     attribute: text
-  - entity: sensor.durlacher_tor_abfahrt_2
-  - entity: sensor.durlacher_tor_abfahrt_3
+  - entity: sensor.durlacher_tor_departure_2
+  - entity: sensor.durlacher_tor_departure_3
 ```
 
-Die genauen Entitäts-IDs stehen unter *Geräte & Dienste → KVV Abfahrten*.
+## Data sources
 
-## Datenquellen
-
-| Quelle | Status |
+| Source | Status |
 |---|---|
-| `efa` (Standard) | Inoffizielle EFA-Schnittstelle `projekte.kvv-efa.de`, ohne Anmeldung, Echtzeit. Undokumentiert, kann sich ändern. |
-| `trias` | Offizielle [KVV-Open-Data-Schnittstelle](https://www.kvv.de/fahrplan/fahrplaene/open-data.html) (VDV 431-2). Zugang per Nutzungsvereinbarung bei fahrplan@kvv.karlsruhe.de. |
+| `efa` (default) | Unofficial EFA interface at `projekte.kvv-efa.de`. No registration, real-time data. Undocumented and may change without notice. |
+| `trias` | Official [KVV open data interface](https://www.kvv.de/fahrplan/fahrplaene/open-data.html) (VDV 431-2). Access requires a usage agreement; contact fahrplan@kvv.karlsruhe.de. |
 
-Für TRIAS in den Einstellungen Quelle `trias`, die vom KVV mitgeteilte URL und
-die Requestor-Referenz eintragen. Die Haltestellensuche läuft immer über EFA.
-**Der TRIAS-Client ist nur gegen eine selbst geschriebene Beispielantwort
-getestet**, nicht gegen den echten Server. Beim ersten Test mit echten
-Zugangsdaten sind kleine Anpassungen (Authentifizierung, Namespaces,
-Haltestellen-IDs) wahrscheinlich.
+To use TRIAS, set the source to `trias` in the settings and enter the URL and
+requestor reference you receive from KVV. Stop search always uses EFA.
 
-## Entwicklung
+**The TRIAS client has only been tested against a hand-written sample response,
+not against the real server.** Expect small adjustments (authentication,
+namespaces, stop IDs) once you have real credentials.
+
+## Status
+
+The API layer is covered by automated tests, including live requests to KVV. The
+Home Assistant parts (config flow, sensors, translations) have been syntax-checked
+but not yet run in a real Home Assistant instance.
+
+## Development
 
 ```
 python -m venv venv && venv/bin/pip install aiohttp pytest pytest-asyncio
 venv/bin/pytest tests
 ```
+
+Translations live in `custom_components/kvv_departures/translations/`. To add a
+language, copy `en.json` to `<language code>.json` and translate the values;
+`tests/test_translations.py` checks that all languages have the same keys.
+
+## Disclaimer
+
+This is an unofficial project and is not affiliated with the KVV. The KVV name
+and logo shown in the icon belong to their respective owners.

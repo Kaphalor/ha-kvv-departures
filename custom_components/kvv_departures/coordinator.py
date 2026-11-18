@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator für KVV-Abfahrten."""
+"""DataUpdateCoordinator for KVV departures."""
 from __future__ import annotations
 
 import logging
@@ -29,7 +29,7 @@ class KvvCoordinator(DataUpdateCoordinator[list[Departure]]):
         self.walk = int(opts.get(CONF_WALK, 0) or 0)
 
     async def _async_update_data(self) -> list[Departure]:
-        # Mehr abfragen, damit Linien-/Fußwegfilter genug Treffer übrig lassen
+        # Fetch extra so the line/walking-time filters still leave enough results
         fetch = min(60, self.count * 3 + 5) if (self.lines or self.walk) else self.count
         try:
             deps = await self.client.departures(self.stop, fetch)

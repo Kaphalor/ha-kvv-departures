@@ -1,4 +1,4 @@
-"""Config- und Options-Flow: Haltestellensuche und Einstellungen."""
+"""Config and options flow: stop search and settings."""
 from __future__ import annotations
 
 import voluptuous as vol

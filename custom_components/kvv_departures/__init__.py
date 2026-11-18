@@ -1,4 +1,4 @@
-"""KVV Abfahrten - native Home-Assistant-Integration."""
+"""KVV Departures - native Home Assistant integration."""
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry

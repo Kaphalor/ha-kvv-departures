@@ -1,4 +1,4 @@
-"""Tests für api.py (ohne Home Assistant). Ausführen: pytest tests"""
+"""Tests for api.py (no Home Assistant needed). Run: pytest tests"""
 import importlib.util
 import sys
 from datetime import datetime, timedelta
@@ -10,7 +10,7 @@ import pytest
 spec = importlib.util.spec_from_file_location(
     "kvv_api", Path(__file__).parent.parent / "custom_components/kvv_departures/api.py")
 api = importlib.util.module_from_spec(spec)
-sys.modules["kvv_api"] = api  # dataclasses brauchen das Modul in sys.modules
+sys.modules["kvv_api"] = api  # dataclasses need the module in sys.modules
 spec.loader.exec_module(api)
 
 TRIAS_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -39,7 +39,7 @@ TRIAS_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
 
 def test_trias_parse():
     deps = api.parse_trias_departures(TRIAS_SAMPLE)
-    assert [d.line for d in deps] == ["S5", "3"]  # nach Ist-Zeit sortiert
+    assert [d.line for d in deps] == ["S5", "3"]  # sorted by actual time
     s5, tram = deps
     assert s5.cancelled and s5.delay is None and not s5.realtime and s5.mode == "sbahn"
     assert tram.delay == 5 and tram.realtime and tram.mode == "tram"
@@ -60,7 +60,7 @@ def test_trias_request_escapes():
                                datetime(2026, 11, 18, 8, 0, tzinfo=api.TZ))
     assert "a&lt;b&amp;" in xml and "<NumberOfResults>3</NumberOfResults>" in xml
     import xml.etree.ElementTree as ET
-    ET.fromstring(xml)  # wohlgeformt
+    ET.fromstring(xml)  # well-formed
 
 
 def _dep(line, minutes, now):
@@ -98,4 +98,4 @@ async def test_efa_live():
         deps = await client.departures(marktplatz, 5)
         assert deps and all(d.actual >= d.planned or d.delay is not None for d in deps)
         with pytest.raises(api.KvvStopError):
-            await client.departures(api.Stop("gibtsnicht", "", "x"), 3)
+            await client.departures(api.Stop("doesnotexist", "", "x"), 3)
